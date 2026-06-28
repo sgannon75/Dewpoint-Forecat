@@ -4,7 +4,6 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function toF(c) { return Math.round(c * 9/5 + 32); }
-function toFd(c) { return (c * 9/5 + 32).toFixed(1); }
 
 function heatIndex(tF, rh) {
   if (tF < 80) return tF;
@@ -55,15 +54,13 @@ function HourlyChart({ hours }) {
     <div style={{ overflowX: "auto", marginTop: 12 }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", minWidth: 320, display: "block" }}>
         {[0.25,0.5,0.75].map(f => (
-          <line key={f} x1={PAD} x2={W-PAD} y1={PAD + f*(H-PAD*2)} y2={PAD + f*(H-PAD*2)}
-            stroke="#1a2a3a" strokeWidth="1" />
+          <line key={f} x1={PAD} x2={W-PAD} y1={PAD + f*(H-PAD*2)} y2={PAD + f*(H-PAD*2)} stroke="#1a2a3a" strokeWidth="1" />
         ))}
         {polyline(temps, "#e8f0ff")}
         {polyline(feels, "#f8954a")}
         {polyline(dews,  "#7ec8e3", "4 3")}
         {labelHours.map((h, i) => (
-          <text key={i} x={xOf(hours.indexOf(h))} y={H-6}
-            textAnchor="middle" fill="#3a5a7a" fontSize="11" fontFamily="monospace">
+          <text key={i} x={xOf(hours.indexOf(h))} y={H-6} textAnchor="middle" fill="#3a5a7a" fontSize="11" fontFamily="monospace">
             {h.label}
           </text>
         ))}
@@ -112,9 +109,7 @@ function DayCard({ day, isToday, isExpanded, onToggle }) {
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#5a7fa8", letterSpacing: 2, textTransform: "uppercase" }}>{label}</div>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#3a5a7a" }}>{dateStr}</div>
         </div>
-        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: disColor, textAlign: "right" }}>
-          {disLabel}
-        </div>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: disColor, textAlign: "right" }}>{disLabel}</div>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <div style={{ flex: 1 }}>
@@ -127,9 +122,7 @@ function DayCard({ day, isToday, isExpanded, onToggle }) {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ color: "#5a7fa8", fontSize: 9, letterSpacing: 1, fontFamily: "'Space Mono', monospace", marginBottom: 2 }}>FEELS</div>
-          <div style={{ color: "#f8954a", fontSize: 20, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
-            {heatIndex(toF(day.tempMaxC), day.rh)}°
-          </div>
+          <div style={{ color: "#f8954a", fontSize: 20, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>{heatIndex(toF(day.tempMaxC), day.rh)}°</div>
         </div>
       </div>
       <div style={{ borderTop: "1px solid #1e2d45", paddingTop: 10 }}>
@@ -158,7 +151,7 @@ function DayCard({ day, isToday, isExpanded, onToggle }) {
 
 const FORECAST_TOOL = {
   name: "submit_forecast",
-  description: "Submit a realistic 5-day weather forecast with hourly breakdown for the given location, based on typical late-June climate patterns.",
+  description: "Submit a realistic 5-day weather forecast with hourly breakdown for the given location, based on typical climate patterns for the current season.",
   input_schema: {
     type: "object",
     properties: {
@@ -221,7 +214,7 @@ export default function App() {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
           "anthropic-version": "2023-06-01",
@@ -234,7 +227,7 @@ export default function App() {
           tool_choice: { type: "tool", name: "submit_forecast" },
           messages: [{
             role: "user",
-            content: `Generate a realistic 5-day weather forecast for "${q}" for late June.
+            content: `Generate a realistic 5-day weather forecast for "${q}".
 Dates: ${dates.join(", ")}.
 For each day include 24 hourly entries (hours 0-23) with realistic diurnal variation:
 - temps lowest around 5-6am, peak around 2-4pm
@@ -254,10 +247,10 @@ All temperatures in Celsius. Call submit_forecast now.`
       const toolBlock = (data.content || []).find(b => b.type === "tool_use" && b.name === "submit_forecast");
       if (!toolBlock) throw new Error("No forecast returned — please try again.");
 
-      const { const { location, days } = toolBlock.input;
-      if (!days || !Array.isArray(days)) throw new Error("Invalid forecast data received. Please try again.");
+      const { location, days } = toolBlock.input;
+      if (!days || !Array.isArray(days) || days.length === 0) throw new Error("Invalid forecast data. Please try again.");
 
-      const enriched = (days || []).map(day => ({
+      const enriched = days.map(day => ({
         ...day,
         hours: (day.hours || []).map(h => {
           const tF = toF(h.tempC);
