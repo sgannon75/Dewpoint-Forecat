@@ -149,45 +149,6 @@ function DayCard({ day, isToday, isExpanded, onToggle }) {
   );
 }
 
-const FORECAST_TOOL = {
-  name: "submit_forecast",
-  description: "Submit a realistic 5-day weather forecast with hourly breakdown for the given location, based on typical climate patterns for the current season.",
-  input_schema: {
-    type: "object",
-    properties: {
-      location: { type: "string" },
-      days: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            date:      { type: "string" },
-            tempMaxC:  { type: "number" },
-            tempMinC:  { type: "number" },
-            dewpointC: { type: "number" },
-            rh:        { type: "integer" },
-            hours: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  hour:      { type: "integer" },
-                  tempC:     { type: "number" },
-                  dewpointC: { type: "number" },
-                  rh:        { type: "integer" }
-                },
-                required: ["hour","tempC","dewpointC","rh"]
-              }
-            }
-          },
-          required: ["date","tempMaxC","tempMinC","dewpointC","rh","hours"]
-        }
-      }
-    },
-    required: ["location","days"]
-  }
-};
-
 export default function App() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
@@ -205,65 +166,46 @@ export default function App() {
     setLocationLabel(null);
     setExpanded(null);
 
-    const dates = Array.from({length: 5}, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-      return d.toISOString().split("T")[0];
-    });
-
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 8000,
-          tools: [FORECAST_TOOL],
-          tool_choice: { type: "tool", name: "submit_forecast" },
-          messages: [{
-            role: "user",
-            content: `Generate a realistic 5-day weather forecast for "${q}".
-Dates: ${dates.join(", ")}.
-For each day include 24 hourly entries (hours 0-23) with realistic diurnal variation:
-- temps lowest around 5-6am, peak around 2-4pm
-- dewpoint more stable but slightly lower midday
-- RH inverse to temperature
-All temperatures in Celsius. Call submit_forecast now.`
-          }]
-        })
+      // Step 1: Geocode the location using Open-Meteo's free geocoding API
+      const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json`);
+      const geoData = await geoRes.json();
+      if (!geoData.results?.length) throw new Error("Location not found. Try a city name or zip code.");
+
+      const { latitude, longitude, name, admin1 } = geoData.results[0];
+      const locationName = admin1 ? `${name}, ${admin1}` : name;
+      setLocationLabel(locationName);
+
+      // Step 2: Fetch real forecast via our serverless function
+      const wxRes = await fetch(`/api/forecast?lat=${latitude}&lon=${longitude}`);
+      if (!wxRes.ok) throw new Error("Weather data unavailable. Please try again.");
+      const wx = await wxRes.json();
+
+      // Step 3: Build day cards from daily data
+      const days = wx.daily.time.map((date, i) => {
+        const tempMaxC  = wx.daily.temperature_2m_max[i];
+        const tempMinC  = wx.daily.temperature_2m_min[i];
+        const dewpointC = wx.daily.dewpoint_2m_mean[i];
+        const rh        = wx.daily.relative_humidity_2m_mean[i];
+
+        // Pull the 24 hourly entries for this day
+        const dayStart = i * 24;
+        const hours = Array.from({ length: 24 }, (_, h) => {
+          const idx = dayStart + h;
+          const tempC     = wx.hourly.temperature_2m[idx];
+          const dewC      = wx.hourly.dewpoint_2m[idx];
+          const rhH       = wx.hourly.relative_humidity_2m[idx];
+          const tF        = toF(tempC);
+          const dF        = toF(dewC);
+          const fF        = toF(wx.hourly.apparent_temperature[idx]);
+          const label     = h === 0 ? "12am" : h === 12 ? "12pm" : h < 12 ? `${h}am` : `${h-12}pm`;
+          return { hour: h, tempC, dewpointC: dewC, rh: rhH, tempF: tF, dewF: dF, feelsF: fF, label };
+        });
+
+        return { date, tempMaxC, tempMinC, dewpointC, rh, hours };
       });
 
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`API ${res.status}: ${body.slice(0,200)}`);
-      }
-
-      const data = await res.json(); console.log("API response:", JSON.stringify(data));
-      const toolBlock = (data.content || []).find(b => b.type === "tool_use" && b.name === "submit_forecast");
-      if (!toolBlock) throw new Error("No forecast returned — please try again.");
-
-      const { location, days } = toolBlock.input;
-      if (!days || !Array.isArray(days) || days.length === 0) throw new Error("Invalid forecast data. Please try again.");
-
-      const enriched = days.map(day => ({
-        ...day,
-        hours: (day.hours || []).map(h => {
-          const tF = toF(h.tempC);
-          const dF = toF(h.dewpointC);
-          const fF = heatIndex(tF, h.rh);
-          const hh = h.hour;
-          const label = hh === 0 ? "12am" : hh === 12 ? "12pm" : hh < 12 ? `${hh}am` : `${hh-12}pm`;
-          return { ...h, tempF: tF, dewF: dF, feelsF: fF, label };
-        })
-      }));
-
-      setLocationLabel(location);
-      setForecast(enriched);
+      setForecast(days);
       setStatus("done");
     } catch (e) {
       setError(e.message || "Something went wrong.");
@@ -329,7 +271,7 @@ All temperatures in Celsius. Call submit_forecast now.`
           </button>
         </div>
         <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#2a3a4a", marginBottom: 22 }}>
-          ⚠ Seasonal climate estimates · Click a day card for hourly detail
+          Live forecast · Click a day card for hourly detail
         </div>
         {error && (
           <div style={{ background: "#1a1020", border: "1px solid #4a1a2a", borderRadius: 10, padding: "12px 16px", marginBottom: 18, color: "#e07070", fontFamily: "'Space Mono', monospace", fontSize: 11 }}>
@@ -343,8 +285,7 @@ All temperatures in Celsius. Call submit_forecast now.`
         )}
         {status === "loading" && (
           <div style={{ textAlign: "center", paddingTop: 60 }}>
-            <div style={{ fontFamily: "'Space Mono', monospace", color: "#2a5298", fontSize: 13 }}>⟳  Generating forecast…</div>
-            <div style={{ fontFamily: "'Space Mono', monospace", color: "#1e2d45", fontSize: 10, marginTop: 6 }}>Generating 5 days of hourly data…</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", color: "#2a5298", fontSize: 13 }}>⟳  Fetching live forecast…</div>
           </div>
         )}
         {status === "done" && forecast.length > 0 && (
@@ -377,7 +318,7 @@ All temperatures in Celsius. Call submit_forecast now.`
               </div>
             </div>
             <div style={{ textAlign: "right", fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#1e2d45" }}>
-              Powered by Claude · {new Date().toLocaleDateString()}
+              Data: Open-Meteo · {new Date().toLocaleDateString()}
             </div>
           </>
         )}
