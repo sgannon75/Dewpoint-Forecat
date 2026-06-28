@@ -135,6 +135,22 @@ function DayCard({ day, isToday, isExpanded, onToggle }) {
           <span style={{ color: day.rh < 30 ? "#e9935a" : day.rh < 60 ? "#5a9ee9" : "#5ae9a0", fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>{day.rh}%</span>
         </div>
         <RHBar value={day.rh} />
+        {day.sunrise && isToday && (
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10 }}>
+            <div>
+              <div style={{ color: "#5a7fa8", fontSize: 9, letterSpacing: 1, fontFamily: "'Space Mono', monospace", marginBottom: 2 }}>CIVIL DAWN</div>
+              <div style={{ color: "#fdd74b", fontSize: 13, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
+                {new Date(new Date(day.sunrise).getTime() - 24*60*1000).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})}
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ color: "#5a7fa8", fontSize: 9, letterSpacing: 1, fontFamily: "'Space Mono', monospace", marginBottom: 2 }}>CIVIL DUSK</div>
+              <div style={{ color: "#f8954a", fontSize: 13, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
+                {new Date(new Date(day.sunset).getTime() + 24*60*1000).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       {isExpanded && day.hours && (
         <div style={{ borderTop: "1px solid #1e2d45", marginTop: 14, paddingTop: 10 }} onClick={e => e.stopPropagation()}>
@@ -202,7 +218,9 @@ export default function App() {
           return { hour: h, tempC, dewpointC: dewC, rh: rhH, tempF: tF, dewF: dF, feelsF: fF, label };
         });
 
-        return { date, tempMaxC, tempMinC, dewpointC, rh, hours };
+        const sunrise = wx.daily.sunrise[i];
+        const sunset  = wx.daily.sunset[i];
+        return { date, tempMaxC, tempMinC, dewpointC, rh, hours, sunrise, sunset };
       });
 
       setForecast(days);
