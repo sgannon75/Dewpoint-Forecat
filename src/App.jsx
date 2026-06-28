@@ -205,7 +205,7 @@ export default function App() {
     setLocationLabel(null);
     setExpanded(null);
 
-    const dates = Array.from({length: 5}, (_, i) => {
+    const dates = Array.from({length: 3}, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() + i);
       return d.toISOString().split("T")[0];
@@ -222,7 +222,7 @@ export default function App() {
         },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
-          max_tokens: 4000,
+          max_tokens: 8000,
           tools: [FORECAST_TOOL],
           tool_choice: { type: "tool", name: "submit_forecast" },
           messages: [{
