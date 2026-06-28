@@ -289,16 +289,14 @@ export default function App() {
           </div>
         )}
         {status === "done" && forecast.length > 0 && (
-          <>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 28 }}>
-              {forecast.map((day, i) => (
-                <DayCard
-                  key={day.date} day={day} isToday={i === 0}
-                  isExpanded={expanded === i}
-                  onToggle={() => setExpanded(expanded === i ? null : i)}
-                />
-              ))}
-            </div>
+  <>
+    <div style={{ marginBottom: 20 }}>
+      <DayCard
+        key={forecast[0].date} day={forecast[0]} isToday={true}
+        isExpanded={expanded === 0}
+        onToggle={() => setExpanded(expanded === 0 ? null : 0)}
+      />
+    </div>
             <div style={{ background: "#0d1825", border: "1px solid #1e2d45", borderRadius: 12, padding: "14px 18px", marginBottom: 12 }}>
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#3a5a7a", letterSpacing: 2, marginBottom: 10 }}>DEWPOINT DISCOMFORT SCALE</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -317,12 +315,17 @@ export default function App() {
                 ))}
               </div>
             </div>
-            <div style={{ textAlign: "right", fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#1e2d45" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 20 }}>
+              {forecast.slice(1).map((day, i) => (
+                <DayCard
+                  key={day.date} day={day} isToday={false}
+                  isExpanded={expanded === i + 1}
+                  onToggle={() => setExpanded(expanded === i + 1 ? null : i + 1)}
+                />
+              ))}
+            </div>
+            <div style={{ textAlign: "right", fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#1e2d45", marginTop: 12 }}>
               Data: Open-Meteo · {new Date().toLocaleDateString()}
             </div>
           </>
         )}
-      </div>
-    </div>
-  );
-}
