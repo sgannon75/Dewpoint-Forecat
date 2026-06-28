@@ -322,7 +322,7 @@ export default function App() {
                   { color: "#5ae9a0", range: "< 55°F", label: "Comfortable — pleasant air" },
                   { color: "#a8e05f", range: "55–59°F", label: "Noticeable — slight mugginess" },
                   { color: "#fdd74b", range: "60–64°F", label: "Sticky — noticeably humid" },
-                  { color: "#f8954a", range: "65–69°F", label: "Oppressive — heavy & uncomfortable" },
+                  { color: "#f8954a", range: "65–69°F", label: "Oppressive — Swampy" },
                   { color: "#f05555", range: "≥ 70°F",  label: "Miserable — dangerous for exertion" },
                 ].map(({ color, range, label }) => (
                   <div key={range} style={{ display: "flex", alignItems: "center", fontFamily: "'Space Mono', monospace", fontSize: 13, color: "#5a7fa8" }}>
