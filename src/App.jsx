@@ -325,9 +325,9 @@ export default function App() {
                   { color: "#f8954a", range: "65–69°F", label: "Oppressive — heavy & uncomfortable" },
                   { color: "#f05555", range: "≥ 70°F",  label: "Miserable — dangerous for exertion" },
                 ].map(({ color, range, label }) => (
-                  <div key={range} style={{ display: "flex", alignItems: "center", fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#5a7fa8" }}>
+                  <div key={range} style={{ display: "flex", alignItems: "center", fontFamily: "'Space Mono', monospace", fontSize: 13, color: "#5a7fa8" }}>
                     <span style={{ ...glyphStyle, color }} />
-                    <span style={{ color, marginRight: 8, minWidth: 60 }}>{range}</span>
+                    <span style={{ color, marginRight: 8, minWidth: 70 }}>{range}</span>
                     <span>{label}</span>
                   </div>
                 ))}
